@@ -37,7 +37,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 /**
  * The RedisBungee plugin.
  * <p>
- * The only function of interest is {@link #getApi()}, which exposes some functions in this class.
+ * The only function of interest is {@link #getApi()}, which deprecated now,
+ * Please check {@link RedisBungeeAPI#getRedisBungeeApi()},
+ *
+ * which exposes some functions in this class.
+ * but if you want old version support,
+ * then you can use old method {@link #getApi()}
+ *
  */
 public final class RedisBungee extends Plugin {
     @Getter
@@ -60,7 +66,6 @@ public final class RedisBungee extends Plugin {
     private final AtomicInteger globalPlayerCount = new AtomicInteger();
     private Future<?> integrityCheck;
     private Future<?> heartbeatTask;
-    private boolean usingLua;
     private LuaManager.Script serverToPlayersScript;
     private LuaManager.Script getPlayerCountScript;
 
@@ -72,8 +77,11 @@ public final class RedisBungee extends Plugin {
     /**
      * Fetch the {@link RedisBungeeAPI} object created on plugin start.
      *
-     * @return the {@link RedisBungeeAPI} object
+     * @deprecated Please use {@link RedisBungeeAPI#getRedisBungeeApi()}
+     *
+     * @return the {@link RedisBungeeAPI} object instance.
      */
+    @Deprecated
     public static RedisBungeeAPI getApi() {
         return api;
     }
@@ -230,8 +238,9 @@ public final class RedisBungee extends Plugin {
             ExecutorService builtinService = (ExecutorService) field.get(this);
             field.set(this, service);
             builtinService.shutdownNow();
-        } catch (Exception e) {
-            getLogger().log(Level.WARNING, "Can't replace BungeeCord thread pool with our own", e);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            getLogger().log(Level.WARNING, "Can't replace BungeeCord thread pool with our own");
+            getLogger().log(Level.INFO, "skipping replacement.....");
         }
         try {
             loadConfig();
@@ -248,7 +257,7 @@ public final class RedisBungee extends Plugin {
                     if (s.startsWith("redis_version:")) {
                         String version = s.split(":")[1];
                         getLogger().info(version + " <- redis version");
-                        if (!(usingLua = RedisUtil.canUseLua(version))) {
+                        if (!RedisUtil.isRedisVersionRight(version)) {
                             getLogger().warning("Your version of Redis (" + version + ") is not at least version 6.0 RedisBungee requires a newer version of Redis.");
                             throw new RuntimeException("Unsupported Redis version detected");
                         } else {
